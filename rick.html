@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Rick and Morty</title>
+    <link rel="stylesheet" href="rick.css">
+</head>
+<body>
+    <h1>Rick and Morty</h1>
+    <p>
+        Pesquise personagens, localizações ou episódios utilizando a API REST.
+    </p>
+
+    <label for="tipoPesquisa">Pesquisar:</label>
+    <select id="tipoPesquisa">
+        <option value="character">Personagens</option>
+        <option value="location">Localizações</option>
+        
+        <!-- CRIA A PARTE DE EP -->
+        <option value="episode">Episódios</option>
+        <!-- CRIA A PARTE DE EP -->
+
+
+    </select>
+
+    <br><br>
+    <label for="campoPesquisa">Nome:</label>
+    <input
+        type="text"
+        id="campoPesquisa"
+        placeholder="Digite o nome para pesquisar"
+    >
+    <button onclick="pesquisar()">Pesquisar</button>
+    <button onclick="listarTodos()">Listar primeiros resultados</button>
+
+    <hr>
+    <p id="mensagem"></p>
+    <div id="resultado"></div>
+    <script>
+       
+       
+       //CRIA UMA CONSTANTE CHAMADA `API_URL` QUE GUARDA O ENDEREÇO-BASE DA API DE RICK AND MORTY
+       
+       const API_URL = "https://rickandmortyapi.com/api";
+
+
+        let urlListaAtual = "";
+        let tipoListaAtual = "";
+        let paginaAnteriorUrl = null;
+        let proximaPaginaUrl = null;
+        
+        
+        
+        // FAZ UMA PESQUISA PELO NOME INFORMADO PELO USUÁRIO
+        
+        
+        async function pesquisar() {
+            const tipo = document.getElementById("tipoPesquisa").value;
+            const nome = document.getElementById("campoPesquisa").value.trim();
+            const mensagem = document.getElementById("mensagem");
+            const resultado = document.getElementById("resultado");
+
+            resultado.innerHTML = "";
+            mensagem.textContent = "Consultando a API...";
+            urlListaAtual = "";
+            paginaAnteriorUrl = null;
+            proximaPaginaUrl = null;
+
+            if (nome === "") {
+                mensagem.textContent = "Digite um nome para pesquisar.";
+                return;
+            }
+
+            const url =
+                API_URL +
+                "/" +
+                tipo +
+                "?name=" +
+                encodeURIComponent(nome);
+
+            await carregarResultados(url, tipo);
+        }
+
+        // FAZ UMA PESQUISA PELO NOME INFORMADO PELO USUÁRIO
+
+        
+       
+       
+        // PREPARA A TELA ANTES DE BUSCAR OS DADOS NA APII 😭
+       
+       
+        async function listarTodos() {
+            const tipo = document.getElementById("tipoPesquisa").value;
+            const mensagem = document.getElementById("mensagem");
+            const resultado = document.getElementById("resultado");
+
+            resultado.innerHTML = "";
+            mensagem.textContent = "Consultando a API...";
+            urlListaAtual = "";
+            paginaAnteriorUrl = null;
+            proximaPaginaUrl = null;
+
+            const url = API_URL + "/" + tipo;
+
+            await carregarResultados(url, tipo);
+        }
+
+        async function carregarResultados(url, tipo) {
+            const mensagem = document.getElementById("mensagem");
+            const resultado = document.getElementById("resultado");
+
+            try {
+                const resposta = await fetch(url);
+
+                if (!resposta.ok) {
+                    throw new Error("Não foi possível carregar os resultados.");
+                }
+
+                const dados = await resposta.json();
+
+                urlListaAtual = url;
+                tipoListaAtual = tipo;
+                paginaAnteriorUrl = dados.info.prev;
+                proximaPaginaUrl = dados.info.next;
+
+                criarTabela(dados.results, tipo);
+                criarControlesPaginacao(dados.info, dados.results.length);
+                mensagem.textContent =
+                    "Página " +
+                    obterNumeroPagina(url) +
+                    " de " + dados.info.pages + " — " +
+                    dados.results.length +
+                    " resultados nesta página, de " +
+                    dados.info.count +
+                    " no total.";
+            } catch (erro) {
+                mensagem.textContent = "Erro: " + erro.message;
+            }
+        }
+
+        function obterNumeroPagina(url) {
+            const pagina = new URL(url).searchParams.get("page");
+            return pagina || "1";
+        }
+
+        function criarControlesPaginacao(info, quantidadeResultados) {
+            const resultado = document.getElementById("resultado");
+            const controles = document.createElement("div");
+            controles.className = "controles-paginacao";
+
+            const botaoAnterior = document.createElement("button");
+            botaoAnterior.textContent = "← Página anterior";
+            botaoAnterior.disabled = !paginaAnteriorUrl;
+            botaoAnterior.addEventListener("click", function () {
+                carregarResultados(paginaAnteriorUrl, tipoListaAtual);
+            });
+
+            const indicador = document.createElement("span");
+            indicador.textContent =
+                "Página " +
+                obterNumeroPagina(urlListaAtual) +
+                " de " +
+                info.pages +
+                " (" +
+                quantidadeResultados +
+                " resultados)";
+
+            const botaoProximo = document.createElement("button");
+            botaoProximo.textContent = "Próxima página →";
+            botaoProximo.disabled = !proximaPaginaUrl;
+            botaoProximo.addEventListener("click", function () {
+                carregarResultados(proximaPaginaUrl, tipoListaAtual);
+            });
+
+            controles.append(botaoAnterior, indicador, botaoProximo);
+            resultado.appendChild(controles);
+        }
+
+        function voltarParaLista() {
+            if (urlListaAtual && tipoListaAtual) {
+                carregarResultados(urlListaAtual, tipoListaAtual);
+                return;
+            }
+            listarTodos();
+        }
+
+        // PREPARA A TELA ANTES DE BUSCAR OS DADOS NA APII 😭
+
+        
+        // CRIAR TABELINHAS
+        function criarTabela(dados, tipo) {
+            const resultado = document.getElementById("resultado");
+            let tabela = "<table border='1'>";
+
+            if (tipo === "character") {
+                tabela += "<thead>";
+                tabela += "<tr>";
+
+                tabela += "<th>Imagem</th>";
+                tabela += "<th>ID</th>";
+                tabela += "<th>Nome</th>";
+                tabela += "<th>Status</th>";
+                tabela += "<th>Espécie</th>";
+                tabela += "<th>Gênero</th>";
+                tabela += "<th>Origem</th>";
+                tabela += "<th>Localização</th>";
+                
+                // PARTE DE DETALHES
+                tabela += "<th>Detalhes</th>";
+                // PARTE DE DETALHES
+               
+               
+                // PARTE DE EPISODE
+                tabela += "<th>Episódios</th>";
+                // PARTE DE EPISODE
+
+                tabela += "</tr>";
+                tabela += "</thead>";
+                tabela += "<tbody>";
+
+                dados.forEach(function (personagem) {
+                    tabela += "<tr>";
+
+                    tabela +=
+                        "<td>" +
+                        "<img src='" +
+                        personagem.image +
+                        "' width='100' alt='" +
+                        personagem.name +
+                        "'>" +
+                        "</td>";
+
+                    tabela += "<td>" + personagem.id + "</td>";
+                    tabela += "<td>" + personagem.name + "</td>";
+                    tabela += "<td>" + personagem.status + "</td>";
+                    tabela += "<td>" + personagem.species + "</td>";
+                    tabela += "<td>" + personagem.gender + "</td>";
+                    tabela += "<td>" + personagem.origin.name + "</td>";
+
+                    // BOTAO PARA VER LOCALI
+                    tabela +=
+                        "<td>" +
+                        personagem.location.name +
+                        "<br>" +
+                        "<button onclick=\"verLocalizacao('" +
+                        personagem.location.url +
+                        "')\">" +
+                        "Ver localização" +
+                        "</button>" +
+                        "</td>";
+
+                    // BOTAO PARA VER LOCALI
+                   
+                   
+                   
+                    // BOTAO PARA VER DETALHES
+                    tabela +=
+                        "<td>" +
+                        "<button onclick='verDetalhes(" +
+                        personagem.id +
+                        ")'>" +
+                        "Ver detalhes" +
+                        "</button>" +
+                        "</td>";
+
+                    // BOTAO PARA VER DETALHES
+                   
+                   
+                   
+                    // COPILOT DO VSCODE ME AJUDO BURREI DEMAIS PARA FAZER ESSA PARTE
+                    tabela +=
+                        "<td>" +
+                        "<button onclick='verEpisodios(" +
+                        JSON.stringify(personagem.episode).replace(/'/g, "&apos;") +
+                        ")'>" +
+                        "Ver episódios (" +
+                        personagem.episode.length +
+                        ")" +
+                        "</button>" +
+                        "</td>";
+
+                    tabela += "</tr>";
+                });
+
+                tabela += "</tbody>";
+            } else if (tipo === "location") {
+                tabela += "<thead>";
+                tabela += "<tr>";
+
+                tabela += "<th>ID</th>";
+                tabela += "<th>Nome</th>";
+                tabela += "<th>Tipo</th>";
+                tabela += "<th>Dimensão</th>";
+                tabela += "<th>Residentes</th>";
+
+                tabela += "</tr>";
+                tabela += "</thead>";
+                tabela += "<tbody>";
+
+                dados.forEach(function (localizacao) {
+                    tabela += "<tr>";
+
+                    tabela += "<td>" + localizacao.id + "</td>";
+                    tabela += "<td>" + localizacao.name + "</td>";
+                    tabela += "<td>" + localizacao.type + "</td>";
+                    tabela += "<td>" + localizacao.dimension + "</td>";
+                    tabela +=
+                        "<td>" +
+                        localizacao.residents.length +
+                        "</td>";
+
+                    tabela += "</tr>";
+                });
+
+                tabela += "</tbody>";
+            } else if (tipo === "episode") {
+                tabela += "<thead>";
+                tabela += "<tr>";
+
+                tabela += "<th>ID</th>";
+                tabela += "<th>Nome</th>";
+                tabela += "<th>Data de exibição</th>";
+                tabela += "<th>Número do episódio</th>";
+
+                tabela += "</tr>";
+                tabela += "</thead>";
+                tabela += "<tbody>";
+
+                dados.forEach(function (episodio) {
+                    tabela += "<tr>";
+
+                    tabela += "<td>" + episodio.id + "</td>";
+                    tabela += "<td>" + episodio.name + "</td>";
+                    tabela += "<td>" + episodio.air_date + "</td>";
+                    tabela += "<td>" + episodio.episode + "</td>";
+
+                    tabela += "</tr>";
+                });
+
+                tabela += "</tbody>";
+            }
+
+            tabela += "</table>";
+
+            resultado.innerHTML = tabela;
+        }
+
+        // ESSA PARTE INICIA UMA FUNÇÃO PARA BUSCAR E MOSTRAR OS DETALHES DE UM ITEM ESPECÍFICO
+        async function buscarEpisodios(urls) {
+            const respostas = await Promise.all(
+                urls.map(async function (url) {
+                    const resposta = await fetch(url);
+
+                    if (!resposta.ok) {
+                        throw new Error("Não foi possível carregar um episódio.");
+                    }
+
+                    return resposta.json();
+                })
+            );
+
+            return respostas;
+        }
+
+        async function verEpisodios(urls) {
+            const mensagem = document.getElementById("mensagem");
+            const resultado = document.getElementById("resultado");
+
+            if (!urls || urls.length === 0) {
+                mensagem.textContent = "Este personagem não participou de nenhum episódio.";
+                return;
+            }
+
+            mensagem.textContent = "Carregando episódios...";
+            resultado.innerHTML = "";
+
+            try {
+                const episodios = await buscarEpisodios(urls);
+
+                let html = "";
+                html += "<h2>Episódios</h2>";
+                html += "<ul>";
+
+                episodios.forEach(function (episodio) {
+                    html +=
+                        "<li><strong>" +
+                        episodio.episode +
+                        "</strong> - " +
+                        episodio.name +
+                        " (" +
+                        episodio.air_date +
+                        ")</li>";
+                });
+
+                html += "</ul>";
+                html += "<button onclick='voltarParaLista()'>Voltar para a lista</button>";
+
+                resultado.innerHTML = html;
+                mensagem.textContent = "Episódios carregados.";
+            } catch (erro) {
+                mensagem.textContent = "Erro: " + erro.message;
+            }
+        }
+
+        async function verDetalhes(id) {
+            const mensagem = document.getElementById("mensagem");
+            const resultado = document.getElementById("resultado");
+
+            mensagem.textContent = "Carregando detalhes...";
+            resultado.innerHTML = "";
+
+            const url = API_URL + "/character/" + id;
+
+            try {
+                const resposta = await fetch(url);
+
+                if (!resposta.ok) {
+                    throw new Error("Não foi possível carregar o personagem.");
+                }
+
+                const personagem = await resposta.json();
+
+                let html = "";
+
+                html += "<h2>Detalhes de " + personagem.name + "</h2>";
+
+                html +=
+                    "<img src='" +
+                    personagem.image +
+                    "' width='180' alt='" +
+                    personagem.name +
+                    "'>";
+
+                html += "<p><strong>ID:</strong> " + personagem.id + "</p>";
+                html += "<p><strong>Status:</strong> " + personagem.status + "</p>";
+                html += "<p><strong>Espécie:</strong> " + personagem.species + "</p>";
+                html += "<p><strong>Gênero:</strong> " + personagem.gender + "</p>";
+                html += "<p><strong>Origem:</strong> " + personagem.origin.name + "</p>";
+                html +=
+                    "<p><strong>Localização:</strong> " +
+                    personagem.location.name +
+                    "</p>";
+
+                html +=
+                    "<button onclick=\"verLocalizacao('" +
+                    personagem.location.url +
+                    "')\">" +
+                    "Ver localização" +
+                    "</button>";
+
+                if (personagem.episode && personagem.episode.length > 0) {
+                    html +=
+                        "<h3>Episódios em que apareceu</h3>";
+                    html +=
+                        "<button onclick='verEpisodios(" +
+                        JSON.stringify(personagem.episode).replace(/'/g, "&apos;") +
+                        ")'>Ver todos os episódios</button>";
+                }
+
+                html += "<button onclick='voltarParaLista()'>Voltar para a lista</button>";
+
+                resultado.innerHTML = html;
+                mensagem.textContent = "Detalhes carregados.";
+            } catch (erro) {
+                mensagem.textContent = "Erro: " + erro.message;
+            }
+        }
+
+        // ESSA FUNÇÃO SERVE PARA BUSCAR E MOSTRAR A LOCALIZAÇÃO DE UM PERSONAGEM.
+        async function verLocalizacao(url) {
+            const mensagem = document.getElementById("mensagem");
+            const resultado = document.getElementById("resultado");
+
+            if (url === "") {
+                mensagem.textContent =
+                    "Este personagem não possui localização conhecida.";
+                return;
+            }
+
+            mensagem.textContent = "Carregando localização...";
+            resultado.innerHTML = "";
+
+            try {
+                const resposta = await fetch(url);
+
+                if (!resposta.ok) {
+                    throw new Error("Não foi possível carregar a localização.");
+                }
+
+                const localizacao = await resposta.json();
+
+                let html = "";
+
+                html += "<h2>" + localizacao.name + "</h2>";
+                html += "<p><strong>ID:</strong> " + localizacao.id + "</p>";
+                html += "<p><strong>Tipo:</strong> " + localizacao.type + "</p>";
+                html +=
+                    "<p><strong>Dimensão:</strong> " +
+                    localizacao.dimension +
+                    "</p>";
+
+                html +=
+                    "<p><strong>Quantidade de residentes:</strong> " +
+                    localizacao.residents.length +
+                    "</p>";
+
+                html +=
+                    "<button onclick='voltarParaLista()'>" +
+                    "Voltar para a lista" +
+                    "</button>";
+                resultado.innerHTML = html;
+                mensagem.textContent = "Localização carregada.";
+            } catch (erro) {
+                mensagem.textContent = "Erro: " + erro.message;
+            }
+        }
+
+
+    // O COPILOT DO VSCODE ME AJUDOU PRINCIPALMENTE NA INDENTAÇÃO
+    // DO CÓDIGO, NAS PÁGINAS PARA VER MAIS RICK E MORTY E NOS EP.
+    // FIQUEI CONFUSO, POIS OS DETALHES JÁ USAVAM O ID DO PERSONAGEM,
+    // MAS EU QUERIA USAR O ID PARA OS EP TAMBÉM.
+    // MEU CÉREBRO EXPLODIU, KARLOS!!!
+
+    // TUDO QUE POSSO DIZER É: OH, MEU DEUS!!!!!!
+    // ASSINADO: RAFAEL
+
+    // APRENDI BASTANTE, MAS PASSEI MEIA HORA COMENTANDO COM <!--
+    // ATÉ LEMBRAR QUE ESTAVA EM JAVASCRIPT E TIVE QUE TROCAR POR //.
+    // NÃO FOI LEGAL, KARLOS, NÃO FOI!!!!!!
+
+
+
+
+
+
+
+
+    </script>
+
+</body>
+</html>
+
+
+
+
